@@ -97,7 +97,7 @@ class MastodonSpotifyBot:
                 continue
 
             time_s = FIXED_INTERVAL
-            if "progress_ms" in dados:
+            if dados is not None and "progress_ms" in dados:
                 progress_time = int(dados["progress_ms"]) / 1000.
                 if "duration_ms" in dados["item"]:
                     waiting_time_ms = int(dados["item"]["duration_ms"])
