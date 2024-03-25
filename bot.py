@@ -96,10 +96,13 @@ class MastodonSpotifyBot:
                 time.sleep(FIXED_INTERVAL)
                 continue
 
-            progress_time = int(dados["progress_ms"]) / 1000.
-            waiting_time_ms = int(dados["item"]["duration_ms"])
-            waiting_time = waiting_time_ms / 1000.
-            time_s = waiting_time - progress_time
+            time_s = FIXED_INTERVAL
+            if "progress_ms" in dados:
+                progress_time = int(dados["progress_ms"]) / 1000.
+                if "duration_ms" in dados["item"]:
+                    waiting_time_ms = int(dados["item"]["duration_ms"])
+                    waiting_time = waiting_time_ms / 1000.
+                    time_s = waiting_time - progress_time
 
             if dados["currently_playing_type"] != "track":
                 logger.info("Not music playing: " + dados["currently_playing_type"])
