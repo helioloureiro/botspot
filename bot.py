@@ -121,7 +121,10 @@ class MastodonSpotifyBot:
                 sys.exit(1)
 
             logger.info(f"sending update to mastodon: {last_song}")
-            self.mstd.status_post(msg["text"] % (str(last_song), str(dados["item"]["artists"][0]["name"]), self.encurta_url(str(dados["item"]["external_urls"]["spotify"])), "#JuckboxMental"),
+            self.mstd.status_post(msg["text"] % (str(last_song), 
+                                                 str(dados["item"]["artists"][0]["name"]),
+                                                 self.encurta_url(str(dados["item"]["external_urls"]["spotify"])),
+                                                 str(msg["hashtags"])),
                                   visibility=msg["visibility"],
                                   spoiler_text=msg["spoiler"] % str(last_song))
             logger.info(f"next song in {time_s} s")
