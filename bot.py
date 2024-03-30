@@ -18,6 +18,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from mastodon import Mastodon
 from odesli.Odesli import Odesli
 import requests
+import yaml
 
 ## logging initializing
 logger = logging.getLogger(__name__)
@@ -66,6 +67,9 @@ class MastodonSpotifyBot:
         if not th.is_alive():
             logger.error("Callback service failed to start and serve")
             raise Exception("Failed to start callback service")
+
+        with open("config.yaml") as conf:
+            msg = yaml.safe_load(conf)
 
         while True:
             dados = self.get_recently_played()
@@ -117,16 +121,9 @@ class MastodonSpotifyBot:
                 sys.exit(1)
 
             logger.info(f"sending update to mastodon: {last_song}")
-            self.mstd.status_post(last_song + \
-                           " - " + \
-                           dados["item"]["artists"][0]["name"] + \
-                           " - " + \
-                           self.encurta_url(str(dados["item"]["external_urls"]["spotify"])) + \
-                           " \n\n " + \
-                           "Repo -> https://github.com/aarles/botspot" + \
-                           " \n\n" + \
-                           "#JuckboxMental",visibility ="public", 
-                           spoiler_text="Ouvindo agora -> " + last_song)
+            self.mstd.status_post(msg["text"] % (str(last_song), str(dados["item"]["artists"][0]["name"]), self.encurta_url(str(dados["item"]["external_urls"]["spotify"])), "#JuckboxMental"),
+                                  visibility=msg["visibility"],
+                                  spoiler_text=msg["spoiler"] % str(last_song))
             logger.info(f"next song in {time_s} s")
             time.sleep(time_s)
 
