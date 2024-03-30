@@ -117,14 +117,16 @@ class MastodonSpotifyBot:
                 sys.exit(1)
 
             logger.info(f"sending update to mastodon: {last_song}")
-            self.mstd.toot("Ouvindo agora! \n\n" + \
-                           last_song + \
+            self.mstd.status_post(last_song + \
                            " - " + \
                            dados["item"]["artists"][0]["name"] + \
                            " - " + \
                            self.encurta_url(str(dados["item"]["external_urls"]["spotify"])) + \
                            " \n\n " + \
-                           "#JuckboxMental")
+                           "Repo -> https://github.com/aarles/botspot" + \
+                           " \n\n" + \
+                           "#JuckboxMental",visibility ="public", 
+                           spoiler_text="Ouvindo agora -> " + last_song)
             logger.info(f"next song in {time_s} s")
             time.sleep(time_s)
 
