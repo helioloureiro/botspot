@@ -123,7 +123,7 @@ class MastodonSpotifyBot:
                 logger.error("Callback server not running - exiting")
                 sys.exit(1)
 
-            logger.info(f"sending update to mastodon: {last_song}"
+            logger.info(f"sending update to mastodon: {last_song}")
 
             self.mstd.status_post(msg["text"] % (str(last_song), 
                                                  str(artist),
