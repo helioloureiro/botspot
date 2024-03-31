@@ -65,7 +65,6 @@ class MastodonSpotifyBot:
         last_song = None
         th = threading.Thread(target=callBackAction, args=(self.settings["callback_api"],))
         th.start()
-        genius = Genius.Genius(lyricsgenius)
 
         if not th.is_alive():
             logger.error("Callback service failed to start and serve")
@@ -182,7 +181,9 @@ class MastodonSpotifyBot:
 
     def lyrics(self, song_name : str, artist : str):
         "função para o gerenciador de letras"
-        return genius.search_song(title=song_name, artist=artist) 
+        gen = Genius.Genius(self.settings["lyricsgenius"])
+        lyric = gen.search_song(song_name, artist)
+        return lyric
 
 def callBackAction(localURL : str):
     "Função pra pegar o callback do spotify"
