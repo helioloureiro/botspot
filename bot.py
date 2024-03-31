@@ -185,7 +185,8 @@ class MastodonSpotifyBot:
     def lyrics(self, song_name : str, artist : str):
         "função para o gerenciador de letras"
         gen = lyricsgenius.Genius(self.settings["lyricsgenius_token"])
-        lyric = gen.search_song(song_name, artist)
+        lyric = gen.search_song(song_name, artist)[0].lyrics
+        print(lyric)
         return lyric
 
 def callBackAction(localURL : str):
