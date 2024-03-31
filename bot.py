@@ -19,7 +19,7 @@ from mastodon import Mastodon
 from odesli.Odesli import Odesli
 import requests
 import yaml
-from lyricsgenius import Genius
+import lyricsgenius
 
 ## logging initializing
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class MastodonSpotifyBot:
             "mastodon_instance": args.mastodoninstance,
             "mastodon_access_token": args.mastodonaccesstoken,
             "keepalive": args.keepalive,
-            "lyricsgenius": args.lyricsgenius
+            "lyricsgenius_token": args.lyricsgenius
         }
 
         if self.settings["client_id"] is None:
@@ -57,8 +57,8 @@ class MastodonSpotifyBot:
         if self.settings["mastodon_access_token"] is None:
             self.settings["mastodon_access_token"] = os.environ.get("MASTODON_ACCESS_TOKEN")
 
-        if self.settings["lyricsgenius"] is None:
-            self.settings["lyricsgenius"] = os.environ.get("GENIUS_TOKEN")
+        if self.settings["lyricsgenius_token"] is None:
+            self.settings["lyricsgenius_token"] = os.environ.get("GENIUS_TOKEN")
 
     def run(self):
         logger.info("Authenticating on Spotify")
@@ -184,7 +184,7 @@ class MastodonSpotifyBot:
 
     def lyrics(self, song_name : str, artist : str):
         "função para o gerenciador de letras"
-        gen = Genius.Genius(self.settings["lyricsgenius"])
+        gen = lyricsgenius.Genius(self.settings["lyricsgenius_token"])
         lyric = gen.search_song(song_name, artist)
         return lyric
 
