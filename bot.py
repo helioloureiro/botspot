@@ -19,6 +19,7 @@ from mastodon import Mastodon
 from odesli.Odesli import Odesli
 import requests
 import yaml
+from lyricsgenius import Genius
 
 ## logging initializing
 logger = logging.getLogger(__name__)
@@ -43,7 +44,8 @@ class MastodonSpotifyBot:
             "scope": args.scope,
             "mastodon_instance": args.mastodoninstance,
             "mastodon_access_token": args.mastodonaccesstoken,
-            "keepalive": args.keepalive
+            "keepalive": args.keepalive,
+            "lyricsgenius": args.lyricsgenius
         }
 
         if self.settings["client_id"] is None:
@@ -63,6 +65,7 @@ class MastodonSpotifyBot:
         last_song = None
         th = threading.Thread(target=callBackAction, args=(self.settings["callback_api"],))
         th.start()
+        genius = Genius.Genius(lyricsgenius)
 
         if not th.is_alive():
             logger.error("Callback service failed to start and serve")
@@ -116,14 +119,17 @@ class MastodonSpotifyBot:
                 continue
 
             last_song = dados["item"]["name"]
+            artist = dados["item"]["artists"][0]["name"]
             if not th.is_alive():
                 logger.error("Callback server not running - exiting")
                 sys.exit(1)
 
-            logger.info(f"sending update to mastodon: {last_song}")
+            logger.info(f"sending update to mastodon: {last_song}"
+
             self.mstd.status_post(msg["text"] % (str(last_song), 
-                                                 str(dados["item"]["artists"][0]["name"]),
+                                                 str(artist),
                                                  self.encurta_url(str(dados["item"]["external_urls"]["spotify"])),
+                                                 self.lyrics(last_song, artist),
                                                  str(msg["hashtags"])),
                                   visibility=msg["visibility"],
                                   spoiler_text=msg["spoiler"] % str(last_song))
@@ -174,6 +180,9 @@ class MastodonSpotifyBot:
         return  Odesli().getByUrl(url).songLink
 
 
+    def lyrics(self, song_name : str, artist : str):
+        "função para o gerenciador de letras"
+        return genius.search_song(title=song_name, artist=artist) 
 
 def callBackAction(localURL : str):
     "Função pra pegar o callback do spotify"
@@ -220,6 +229,7 @@ if __name__ == '__main__':
     parse.add_argument('--mastodonaccesstoken', required=False, help='The token to access your mastodon account - it can be passed as environment variable MASTODON_ACCESS_TOKEN')
     parse.add_argument('--loglevel', default='info')
     parse.add_argument('--keepalive', default=False, type=bool, help='To keep it running or exit in case of error')
+    parse.add_argument('--lyricsgenius', default=False, help='Token to Genius Lyrics')
     args = parse.parse_args()
 
     logger.setLevel(args.loglevel.upper())
