@@ -4,6 +4,7 @@ astroid==3.1.0
 async-timeout==4.0.3
 attrs==23.2.0
 backoff==1.11.1
+beautifulsoup4==4.12.3
 blurhash==1.1.4
 certifi==2024.2.2
 charset-normalizer==3.3.2
@@ -13,11 +14,14 @@ decorator==5.1.1
 dill==0.3.8
 distro-info==1.1+ubuntu0.2
 frozenlist==1.4.1
+greenlet==1.1.2
 idna==3.6
 isort==5.13.2
 jedi==0.19.1
+lyricsgenius==3.0.1
 Mastodon.py==1.8.1
 mccabe==0.7.0
+msgpack==1.0.3
 multidict==6.0.5
 netifaces==0.11.0
 odesli==0.0.2
@@ -25,6 +29,7 @@ parso==0.8.3
 platformdirs==4.2.0
 PyGObject==3.42.1
 pylint==3.1.0
+pynvim==0.4.2
 python-apt==2.4.0+ubuntu3
 python-dateutil==2.9.0.post0
 python-magic==0.4.27
@@ -32,6 +37,7 @@ PyYAML==5.4.1
 redis==5.0.2
 requests==2.31.0
 six==1.16.0
+soupsieve==2.5
 spotify==0.10.2
 spotipy==2.23.0
 tomli==2.0.1

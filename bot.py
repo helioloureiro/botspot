@@ -44,8 +44,8 @@ class MastodonSpotifyBot:
             "scope": args.scope,
             "mastodon_instance": args.mastodoninstance,
             "mastodon_access_token": args.mastodonaccesstoken,
-            "keepalive": args.keepalive,
-            "lyricsgenius_token": args.lyricsgenius
+            "keepalive": args.keepalive
+           # "lyricsgenius_token": args.lyricsgenius
         }
 
         if self.settings["client_id"] is None:
@@ -57,8 +57,8 @@ class MastodonSpotifyBot:
         if self.settings["mastodon_access_token"] is None:
             self.settings["mastodon_access_token"] = os.environ.get("MASTODON_ACCESS_TOKEN")
 
-        if self.settings["lyricsgenius_token"] is None:
-            self.settings["lyricsgenius_token"] = os.environ.get("GENIUS_TOKEN")
+        # if self.settings["lyricsgenius_token"] is None:
+          #  self.settings["lyricsgenius_token"] = os.environ.get("GENIUS_TOKEN")
 
     def run(self):
         logger.info("Authenticating on Spotify")
@@ -104,7 +104,7 @@ class MastodonSpotifyBot:
                     sys.exit(0)
                 time.sleep(FIXED_INTERVAL)
                 continue
-
+            
             progress_time = int(dados["progress_ms"]) / 1000.
             waiting_time_ms = int(dados["item"]["duration_ms"])
             waiting_time = waiting_time_ms / 1000.
@@ -120,23 +120,27 @@ class MastodonSpotifyBot:
                 time.sleep(time_s)
                 continue
 
-            last_song = dados["item"]["name"]
+            lasted_song = dados["item"]["name"]
             artist = dados["item"]["artists"][0]["name"]
             if not th.is_alive():
                 logger.error("Callback server not running - exiting")
                 sys.exit(1)
 
-            logger.info(f"sending update to mastodon: {last_song}")
+            # letra = self.lyrics(song=dados["item"]["name"], artist=dados["item"]["artists"][0]["name"]).lyrics
 
-            self.mstd.status_post(msg["text"] % (str(last_song), 
-                                                 str(artist),
+            # lyrica = letra.replace("EmbedShare Url:CopyEmbed:Copy", "")
+
+            logger.info(f"sending update to mastodon: {lasted_song}")
+
+            self.mstd.status_post(msg["text"] % (str(lasted_song),
+                                                 str(dados["item"]["artists"][0]["name"]),
                                                  self.encurta_url(str(dados["item"]["external_urls"]["spotify"])),
-                                                 self.lyrics(last_song, artist),
-                                                 str(msg["hashtags"])),
-                                  visibility=msg["visibility"],
-                                  spoiler_text=msg["spoiler"] % str(last_song))
+						 str(msg["hashtags"])),
+                                       visibility=msg["visibility"],
+                                       spoiler_text=msg["spoiler"] % str(lasted_song))
             logger.info(f"next song in {time_s} s")
             time.sleep(time_s)
+
 
     def authenticate_spotify(self):
         "criação do objeto de autenticação do Spotify"
@@ -182,13 +186,6 @@ class MastodonSpotifyBot:
         return  Odesli().getByUrl(url).songLink
 
 
-    def lyrics(self, song_name : str, artist : str):
-        "função para o gerenciador de letras"
-        gen = lyricsgenius.Genius(self.settings["lyricsgenius_token"])
-        lyric = gen.search_song(song_name, artist)[0].lyrics
-        print(lyric)
-        return lyric
-
 def callBackAction(localURL : str):
     "Função pra pegar o callback do spotify"
     # localURL format: http:// + localhost + : + <port> + <route>
@@ -224,6 +221,7 @@ def callBackAction(localURL : str):
     except KeyboardInterrupt:
         return
 
+
 if __name__ == '__main__':
     parse = argparse.ArgumentParser(description='Mastodon bot to post your spotify current listening song')
     parse.add_argument('--clientid', required=False, help='Spotify\'s client ID - it can be passed as environment variable SPOTIFY_CLIENT_ID')
@@ -234,7 +232,7 @@ if __name__ == '__main__':
     parse.add_argument('--mastodonaccesstoken', required=False, help='The token to access your mastodon account - it can be passed as environment variable MASTODON_ACCESS_TOKEN')
     parse.add_argument('--loglevel', default='info')
     parse.add_argument('--keepalive', default=False, type=bool, help='To keep it running or exit in case of error')
-    parse.add_argument('--lyricsgenius', default=False, help='Token to Genius Lyrics')
+    # parse.add_argument('--lyricsgenius', default=False, help='Token to Genius Lyrics')
     args = parse.parse_args()
 
     logger.setLevel(args.loglevel.upper())
