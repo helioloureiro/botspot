@@ -57,6 +57,9 @@ class MastodonSpotifyBot:
         if self.settings["mastodon_access_token"] is None:
             self.settings["mastodon_access_token"] = os.environ.get("MASTODON_ACCESS_TOKEN")
 
+        if self.settings["lyricsgenius"] is None:
+            self.settings["lyricsgenius"] = os.environ.get("GENIUS_TOKEN")
+
     def run(self):
         logger.info("Authenticating on Spotify")
         self.authenticate_spotify()
