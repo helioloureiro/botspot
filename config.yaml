@@ -1,4 +1,44 @@
-text: "Ouvindo agora %s de %s \n\n %s \n\n %s "
-spoiler: "Ouvindo agora -> %s"
-visibility: "public"
-hashtags: "#JuckboxMental #TocandoAgora"
+credentials:
+  spotify:
+    client ID:
+    client secret:
+  mastodon: 
+      instance: account@fediverse-server-address
+      access token:
+  lyrics genius:
+    token:
+
+post text: 
+  ## Entries:
+  ## 1. song name
+  ## 2. band name
+  ## 3. link to the song
+  ## 4. hashtags
+  Ouvindo agora %s de %s 
+  
+
+  %s 
+
+
+  %s 
+
+# options: public|private
+visibility: public
+
+hashtags: 
+  - JuckboxMental 
+  - TocandoAgora
+
+Content Warning:
+  enabled: false
+  ## entry: song name
+  spoiler: "Ouvindo agora -> %s"
+
+callback: http://localhost:8888/callback
+
+keepalive:
+  enabled: false
+
+scope: user-read-currently-playing
+
+loglevel: info
