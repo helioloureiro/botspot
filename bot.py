@@ -18,6 +18,8 @@ from spotipy.oauth2 import SpotifyOAuth
 from mastodon import Mastodon
 from odesli.Odesli import Odesli
 import requests
+import yaml
+import lyricsgenius
 
 ## logging initializing
 logger = logging.getLogger(__name__)
@@ -43,6 +45,7 @@ class MastodonSpotifyBot:
             "mastodon_instance": args.mastodoninstance,
             "mastodon_access_token": args.mastodonaccesstoken,
             "keepalive": args.keepalive
+           # "lyricsgenius_token": args.lyricsgenius
         }
 
         if self.settings["client_id"] is None:
@@ -53,6 +56,9 @@ class MastodonSpotifyBot:
 
         if self.settings["mastodon_access_token"] is None:
             self.settings["mastodon_access_token"] = os.environ.get("MASTODON_ACCESS_TOKEN")
+
+        # if self.settings["lyricsgenius_token"] is None:
+          #  self.settings["lyricsgenius_token"] = os.environ.get("GENIUS_TOKEN")
 
     def run(self):
         logger.info("Authenticating on Spotify")
@@ -66,6 +72,9 @@ class MastodonSpotifyBot:
         if not th.is_alive():
             logger.error("Callback service failed to start and serve")
             raise Exception("Failed to start callback service")
+
+        with open("config.yaml") as conf:
+            msg = yaml.safe_load(conf)
 
         while True:
             dados = self.get_recently_played()
@@ -101,13 +110,10 @@ class MastodonSpotifyBot:
                 time.sleep(FIXED_INTERVAL)
                 continue
 
-            time_s = FIXED_INTERVAL
-            if "progress_ms" in dados:
-                progress_time = int(dados["progress_ms"]) / 1000.
-                if "duration_ms" in dados["item"]:
-                    waiting_time_ms = int(dados["item"]["duration_ms"])
-                    waiting_time = waiting_time_ms / 1000.
-                    time_s = waiting_time - progress_time
+            progress_time = int(dados["progress_ms"]) / 1000.
+            waiting_time_ms = int(dados["item"]["duration_ms"])
+            waiting_time = waiting_time_ms / 1000.
+            time_s = waiting_time - progress_time
 
             if dados["currently_playing_type"] != "track":
                 logger.info("Not music playing: " + dados["currently_playing_type"])
@@ -119,22 +125,27 @@ class MastodonSpotifyBot:
                 time.sleep(time_s)
                 continue
 
-            last_song = dados["item"]["name"]
+            lasted_song = dados["item"]["name"]
+            artist = dados["item"]["artists"][0]["name"]
             if not th.is_alive():
                 logger.error("Callback server not running - exiting")
                 sys.exit(1)
 
-            logger.info(f"sending update to mastodon: {last_song}")
-            self.mstd.toot("Ouvindo agora! \n\n" + \
-                           last_song + \
-                           " - " + \
-                           dados["item"]["artists"][0]["name"] + \
-                           " - " + \
-                           self.encurta_url(str(dados["item"]["external_urls"]["spotify"])) + \
-                           " \n\n " + \
-                           "#JuckboxMental")
+            # letra = self.lyrics(song=dados["item"]["name"], artist=dados["item"]["artists"][0]["name"]).lyrics
+
+            # lyrica = letra.replace("EmbedShare Url:CopyEmbed:Copy", "")
+
+            logger.info(f"sending update to mastodon: {lasted_song}")
+
+            self.mstd.status_post(msg["text"] % (str(lasted_song),
+                                                 str(dados["item"]["artists"][0]["name"]),
+                                                 self.encurta_url(str(dados["item"]["external_urls"]["spotify"])),
+						 str(msg["hashtags"])),
+                                       visibility=msg["visibility"],
+                                       spoiler_text=msg["spoiler"] % str(lasted_song))
             logger.info(f"next song in {time_s} s")
             time.sleep(time_s)
+
 
     def authenticate_spotify(self):
         "criação do objeto de autenticação do Spotify"
@@ -181,7 +192,6 @@ class MastodonSpotifyBot:
         return  Odesli().getByUrl(url).songLink
 
 
-
 def callBackAction(localURL : str):
     "Função pra pegar o callback do spotify"
     # localURL format: http:// + localhost + : + <port> + <route>
@@ -217,6 +227,7 @@ def callBackAction(localURL : str):
     except KeyboardInterrupt:
         return
 
+
 if __name__ == '__main__':
     parse = argparse.ArgumentParser(description='Mastodon bot to post your spotify current listening song')
     parse.add_argument('--clientid', required=False, help='Spotify\'s client ID - it can be passed as environment variable SPOTIFY_CLIENT_ID')
@@ -227,6 +238,7 @@ if __name__ == '__main__':
     parse.add_argument('--mastodonaccesstoken', required=False, help='The token to access your mastodon account - it can be passed as environment variable MASTODON_ACCESS_TOKEN')
     parse.add_argument('--loglevel', default='info')
     parse.add_argument('--keepalive', default=False, type=bool, help='To keep it running or exit in case of error')
+    # parse.add_argument('--lyricsgenius', default=False, help='Token to Genius Lyrics')
     args = parse.parse_args()
 
     logger.setLevel(args.loglevel.upper())
