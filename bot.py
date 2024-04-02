@@ -36,29 +36,23 @@ FIXED_INTERVAL = 60
 
 
 class MastodonSpotifyBot:
-    def __init__(self, args):
-        self.settings = {
-            "client_id": args.clientid,
-            "client_secret": args.clientsecret,
-            "callback_api": args.callback,
-            "scope": args.scope,
-            "mastodon_instance": args.mastodoninstance,
-            "mastodon_access_token": args.mastodonaccesstoken,
-            "keepalive": args.keepalive
-           # "lyricsgenius_token": args.lyricsgenius
-        }
+    def __init__(self, settings):
 
-        if self.settings["client_id"] is None:
-            self.settings["client_id"] = os.environ.get("SPOTIFY_CLIENT_ID")
+        logger.setLevel(settings["loglevel"].upper())
 
-        if self.settings["client_secret"] is None:
-            self.settings["client_secret"] = os.environ.get("SPOTIFY_CLIENT_SECRET")
+        self.settings = settings
 
-        if self.settings["mastodon_access_token"] is None:
-            self.settings["mastodon_access_token"] = os.environ.get("MASTODON_ACCESS_TOKEN")
+        if self.settings["credentials"]["spotify"]["client ID"] is None:
+            self.settings["credentials"]["spotify"]["client ID"] = os.environ.get("SPOTIFY_CLIENT_ID")
 
-        # if self.settings["lyricsgenius_token"] is None:
-          #  self.settings["lyricsgenius_token"] = os.environ.get("GENIUS_TOKEN")
+        if self.settings["credentials"]["spotify"]["client secret"] is None:
+            self.settings["credentials"]["spotify"]["client secret"] = os.environ.get("SPOTIFY_CLIENT_SECRET")
+
+        if self.settings["credentials"]["mastodon"]["access token"] is None:
+            self.settings["credentials"]["mastodon"]["access token"] = os.environ.get("MASTODON_ACCESS_TOKEN")
+
+        if self.settings["credentials"]["lyrics genius"]["token"] is None:
+            self.settings["credentials"]["lyrics genius"]["token"] = os.environ.get("GENIUS_TOKEN")
 
     def run(self):
         logger.info("Authenticating on Spotify")
@@ -66,7 +60,7 @@ class MastodonSpotifyBot:
         logger.info("Authenticating on Mastodon")
         self.authenticate_mastodon()
         last_song = None
-        th = threading.Thread(target=callBackAction, args=(self.settings["callback_api"],))
+        th = threading.Thread(target=callBackAction, args=(self.settings["callback"],))
         th.start()
 
         if not th.is_alive():
@@ -81,6 +75,11 @@ class MastodonSpotifyBot:
             logger.debug("dados: " + str(dados))
             # envia para o Mastodon
             if dados is None:
+                time.sleep(FIXED_INTERVAL)
+                continue
+
+            if 'item' in dados and dados['item'] is None:
+                logger.warning("dados[\"item\"] is empty (null)")
                 time.sleep(FIXED_INTERVAL)
                 continue
 
@@ -104,7 +103,7 @@ class MastodonSpotifyBot:
                     sys.exit(0)
                 time.sleep(FIXED_INTERVAL)
                 continue
-            
+
             progress_time = int(dados["progress_ms"]) / 1000.
             waiting_time_ms = int(dados["item"]["duration_ms"])
             waiting_time = waiting_time_ms / 1000.
@@ -132,29 +131,39 @@ class MastodonSpotifyBot:
 
             logger.info(f"sending update to mastodon: {lasted_song}")
 
-            self.mstd.status_post(msg["text"] % (str(lasted_song),
-                                                 str(dados["item"]["artists"][0]["name"]),
-                                                 self.encurta_url(str(dados["item"]["external_urls"]["spotify"])),
-						 str(msg["hashtags"])),
-                                       visibility=msg["visibility"],
-                                       spoiler_text=msg["spoiler"] % str(lasted_song))
+            toot_msg = self.compose_message(
+                lasted_song, 
+                dados["item"]["artists"][0]["name"],
+                self.encurta_url(dados["item"]["external_urls"]["spotify"])
+            )
+
+            logger.debug("Posting: " + toot_msg)
+
+            if self.settings["Content Warning"]["enabled"]:
+                self.mstd.status_post(toot_msg,
+                                  visibility=self.settings["visibility"],
+                                  spoiler_text=self.settings["Content Warning'"]["spoiler"] % str(lasted_song))
+            else:
+                self.mstd.status_post(toot_msg, visibility=self.settings["visibility"])
             logger.info(f"next song in {time_s} s")
             time.sleep(time_s)
 
 
     def authenticate_spotify(self):
         "criação do objeto de autenticação do Spotify"
-        self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=self.settings["client_id"],
-                                               client_secret=self.settings["client_secret"],
-                                               redirect_uri=self.settings["callback_api"],
-                                               scope=self.settings["scope"]
-                                                            ))
+        self.sp = spotipy.Spotify(
+            auth_manager=SpotifyOAuth(
+                client_id=self.settings["credentials"]["spotify"]["client ID"],
+                client_secret=self.settings["credentials"]["spotify"]["client secret"],
+                redirect_uri=self.settings["callback"],
+                scope=self.settings["scope"]
+            ))
 
     def authenticate_mastodon(self):
         "autenticação no Mastodon"
         self.mstd = Mastodon(
-            api_base_url = self.settings["mastodon_instance"],
-            access_token = self.settings["mastodon_access_token"]
+            api_base_url = self.settings["credentials"]["mastodon"]["instance"],
+            access_token = self.settings["credentials"]["mastodon"]["access token"]
         )
 
     def get_recently_played(self) -> dict:
@@ -170,12 +179,13 @@ class MastodonSpotifyBot:
             return  generic_response
         except requests.exceptions.ReadTimeout:
             return generic_response
+        except requests.exceptions.ConnectionError:
+            return generic_response
         
         if results is None:
             return generic_response
 
         if results:
-
            if not "is_playing" in results:
                return  generic_response
 
@@ -184,6 +194,15 @@ class MastodonSpotifyBot:
     def encurta_url(self, url : str):
         "função para o gerenciador SongLink"
         return  Odesli().getByUrl(url).songLink
+
+    def compose_message(self, song_name, artist_info, song_link):
+        "Render back the post message for Mastodon"
+
+        tags = ""
+        for tg in self.settings["hashtags"]:
+            tags += f"#{tg}\n"
+
+        return self.settings["post text"] % (song_name, artist_info, song_link, tags)
 
 
 def callBackAction(localURL : str):
@@ -224,18 +243,11 @@ def callBackAction(localURL : str):
 
 if __name__ == '__main__':
     parse = argparse.ArgumentParser(description='Mastodon bot to post your spotify current listening song')
-    parse.add_argument('--clientid', required=False, help='Spotify\'s client ID - it can be passed as environment variable SPOTIFY_CLIENT_ID')
-    parse.add_argument('--clientsecret', required=False, help='Spotify\'s client secret - it can be passed as environment variable SPOTIFY_CLIENT_SECRET')
-    parse.add_argument('--callback', required=False, default='http://localhost:8888/callback', help='Spotify\'s callback listener')
-    parse.add_argument('--scope', required=False, default='user-read-currently-playing', help='Current profile?')
-    parse.add_argument('--mastodoninstance', required=False, default='https://mastodon.social', help='The instance you have an account')
-    parse.add_argument('--mastodonaccesstoken', required=False, help='The token to access your mastodon account - it can be passed as environment variable MASTODON_ACCESS_TOKEN')
-    parse.add_argument('--loglevel', default='info')
-    parse.add_argument('--keepalive', default=False, type=bool, help='To keep it running or exit in case of error')
-    # parse.add_argument('--lyricsgenius', default=False, help='Token to Genius Lyrics')
+    parse.add_argument('--config', required=True, help="The yaml configuration file")
     args = parse.parse_args()
 
-    logger.setLevel(args.loglevel.upper())
+    with open(args.config) as config:
+        settings = yaml.safe_load(config)
 
-    bot = MastodonSpotifyBot(args)
+    bot = MastodonSpotifyBot(settings)
     bot.run()
