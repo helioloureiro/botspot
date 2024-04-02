@@ -75,6 +75,11 @@ class MastodonSpotifyBot:
                 time.sleep(FIXED_INTERVAL)
                 continue
 
+            if 'item' in dados and dados['item'] is None:
+                logger.warning("dados[\"item\"] is empty (null)")
+                time.sleep(FIXED_INTERVAL)
+                continue
+
             logger.debug("dados json:\n" + json.dumps(dados, indent=4) )
 
             if not "is_playing" in dados:
@@ -97,7 +102,7 @@ class MastodonSpotifyBot:
                 continue
 
             time_s = FIXED_INTERVAL
-            if dados is not None and "progress_ms" in dados:
+            if "progress_ms" in dados:
                 progress_time = int(dados["progress_ms"]) / 1000.
                 if "duration_ms" in dados["item"]:
                     waiting_time_ms = int(dados["item"]["duration_ms"])
@@ -159,12 +164,13 @@ class MastodonSpotifyBot:
             return  generic_response
         except requests.exceptions.ReadTimeout:
             return generic_response
+        except requests.exceptions.ConnectionError:
+            return generic_response
         
         if results is None:
             return generic_response
 
         if results:
-
            if not "is_playing" in results:
                return  generic_response
 
