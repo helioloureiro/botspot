@@ -15,7 +15,7 @@ import signal
 ## external modules
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from mastodon import Mastodon
+from mastodon import Mastodon, errors
 from odesli.Odesli import Odesli
 import requests
 import yaml
@@ -114,13 +114,15 @@ class MastodonSpotifyBot:
                 time.sleep(time_s)
                 continue
 
-            if last_song == dados["item"]["name"]:
+            current_song = dados["item"]["name"]
+            if last_song == current_song:
                 logger.warning(f"Current song is the same as last song: {last_song}")
                 time.sleep(time_s)
                 continue
 
-            lasted_song = dados["item"]["name"]
             artist = dados["item"]["artists"][0]["name"]
+            song_url = dados["item"]["external_urls"]["spotify"]
+
             if not th.is_alive():
                 logger.error("Callback server not running - exiting")
                 sys.exit(1)
@@ -129,23 +131,20 @@ class MastodonSpotifyBot:
 
             # lyrica = letra.replace("EmbedShare Url:CopyEmbed:Copy", "")
 
-            logger.info(f"sending update to mastodon: {lasted_song}")
+            logger.info(f"sending update to mastodon: {current_song}")
 
             toot_msg = self.compose_message(
-                lasted_song, 
-                dados["item"]["artists"][0]["name"],
-                self.encurta_url(dados["item"]["external_urls"]["spotify"])
+                current_song,
+                artist,
+                song_url
             )
 
             logger.debug("Posting: " + toot_msg)
 
-            if self.settings["Content Warning"]["enabled"]:
-                self.mstd.status_post(toot_msg,
-                                  visibility=self.settings["visibility"],
-                                  spoiler_text=self.settings["Content Warning'"]["spoiler"] % str(lasted_song))
-            else:
-                self.mstd.status_post(toot_msg, visibility=self.settings["visibility"])
+            self.post_mastodon(toot_msg, current_song)
+
             logger.info(f"next song in {time_s} s")
+            last_song = current_song
             time.sleep(time_s)
 
 
@@ -193,7 +192,12 @@ class MastodonSpotifyBot:
 
     def encurta_url(self, url : str):
         "função para o gerenciador SongLink"
-        return  Odesli().getByUrl(url).songLink
+        try:
+            return  Odesli().getByUrl(url).songLink
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"Failed to generate generic song link: {e}")
+            logger.info(f"Returning original song link: {url}")
+            return url
 
     def compose_message(self, song_name, artist_info, song_link):
         "Render back the post message for Mastodon"
@@ -203,6 +207,19 @@ class MastodonSpotifyBot:
             tags += f"#{tg}\n"
 
         return self.settings["post text"] % (song_name, artist_info, song_link, tags)
+
+    def post_mastodon(self, message, song_name):
+        "To handle mastodon post and errors - it will log as error but continue to process"
+        spoiler = None
+        if self.settings["Content Warning"]["enabled"]: 
+            if isinstance(self.settings["Content Warning'"]["spoiler"], str):
+                spoiler = self.settings["Content Warning'"]["spoiler"] % song_name
+        try:
+            self.mstd.status_post(message,
+                                  visibility=self.settings["visibility"],
+                                  spoiler_text=spoiler)
+        except errors.MastodonServiceUnavailableError as e:
+            logger.error(f"Failed to post on mastodon: {e}")
 
 
 def callBackAction(localURL : str):
