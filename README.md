@@ -4,6 +4,6 @@ Este script tem a finalidade de integrar a API do Spotify com a API de Mastodon,
 
 ### Chaves de API
 
-As chaves de API do Spotify devem ser conseguidas na página: https://developers.spotyfy.com
+As chaves de API do Spotify devem ser conseguidas na página: https://developers.spotify.com
 
 O Token do Mastodon é encontrado na página de desenvolvimento das configurações da Plataforma.
